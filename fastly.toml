@@ -22,8 +22,8 @@ vensys-data = { file = 'data.json', format = 'json' }
 
 
 [scripts]
-# build = "tinygo build -target=wasi -o bin/main.wasm ./"
-build = "go build -o bin/main.wasm ./"
+build = "tinygo build -target=wasi -o bin/main.wasm ./"
+# build = "go build -o bin/main.wasm ./"
 env_vars = ["GOARCH=wasm", "GOOS=wasip1"]
 post_init = "go get github.com/fastly/compute-sdk-go@latest"
 [localserver]
