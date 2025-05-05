@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Wind Turbine Dashboard</title>
+                <script src="https://cdn.jsdelivr.net/npm/tailwindcss@4.1.5/dist/lib.min.js"></script>
+        <link
+            href="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.css"
+            rel="stylesheet"
+        />
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+        <script src=" https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/js/all.min.js "></script>
+    </head>
+    <body class="bg-gray-100">
+        <div class="container mx-auto px-4 py-6">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800">
+                        Wind Turbine Dashboard
+                    </h1>
+                    <p class="text-gray-600">Graig Fatha Turbine</p>
+                </div>
+                <div class="flex items-center">
+                    <!-- <span
+                        class="bg-green-100 text-green-800 text-sm font-medium mr-2 px-3 py-1 rounded-full"
+                        >Online</span
+                    > -->
+                    <span class="text-gray-600 text-sm"
+                        >Last updated:
+                        <span id="lastUpdated">{{ lastUpdate }}</span></span
+                    >
+                </div>
+            </div>
+
+            <!-- Current Status Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">
+                                Current Power Output
+                            </p>
+                            <h2
+                                class="text-2xl font-bold text-blue-600"
+                                id="currentPower"
+                            >
+                                {{ powerAvg|floatformat:0 }} kW
+                            </h2>
+                        </div>
+                        <div class="text-blue-500">
+                            <i class="fas fa-bolt text-2xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div
+                                class="bg-blue-600 h-2.5 rounded-full"
+                                style="width: {{ powerAvgPct|floatformat:0 }}%"
+                            ></div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">
+                            {{ powerAvgPct|floatformat:0 }}% of capacity
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Wind Speed</p>
+                            <h2
+                                class="text-2xl font-bold text-emerald-600"
+                                id="windSpeed"
+                            >
+                                {{ windAvg|floatformat:2 }} m/s
+                            </h2>
+                        </div>
+                        <div class="text-emerald-500">
+                            <i class="fas fa-wind text-2xl"></i>
+                        </div>
+                    </div>
+                    <!-- <p class="text-xs text-gray-500 mt-4">
+                        Optimal range: 12-25 m/s
+                    </p> -->
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Rotor Speed</p>
+                            <h2
+                                class="text-2xl font-bold text-purple-600"
+                                id="rotorSpeed"
+                            >
+                                {{ genSpeed|floatformat:2 }} RPM
+                            </h2>
+                        </div>
+                        <div class="text-purple-500">
+                            <i class="fas fa-sync-alt text-2xl"></i>
+                        </div>
+                    </div>
+                    <!-- <p class="text-xs text-gray-500 mt-4">
+                        Normal operational range
+                    </p> -->
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Energy Today</p>
+                            <h2
+                                class="text-2xl font-bold text-amber-600"
+                                id="energyToday"
+                            >
+                                {{ energyYield|floatformat:0 }} kWh
+                            </h2>
+                        </div>
+                        <div class="text-amber-500">
+                            <i class="fas fa-calendar-day text-2xl"></i>
+                        </div>
+                    </div>
+                    <!-- <p class="text-xs text-gray-500 mt-4">
+                        Daily target: 50 MWh
+                    </p> -->
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- <div class="grid grid-cols-1 lg:grid-cols-3 gap-6"> -->
+                <!-- Power Output Chart -->
+                <!-- <div class="lg:col-span-2 bg-white rounded-lg shadow p-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        Power Output (Last 24 Hours)
+                    </h3>
+                    <div class="h-64">
+                        <canvas id="powerChart"></canvas>
+                    </div>
+                </div> -->
+
+                <!-- Weather Conditions -->
+                <!-- <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        Weather Conditions
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="border rounded-lg p-3">
+                            <div class="flex justify-between">
+                                <p class="text-sm text-gray-600">Temperature</p>
+                                <i
+                                    class="fas fa-temperature-half text-red-500"
+                                ></i>
+                            </div>
+                            <p class="text-xl font-bold" id="temperature">
+                                12.4°C
+                            </p>
+                        </div>
+                        <div class="border rounded-lg p-3">
+                            <div class="flex justify-between">
+                                <p class="text-sm text-gray-600">Humidity</p>
+                                <i class="fas fa-droplet text-blue-500"></i>
+                            </div>
+                            <p class="text-xl font-bold" id="humidity">68%</p>
+                        </div>
+                        <div class="border rounded-lg p-3">
+                            <div class="flex justify-between">
+                                <p class="text-sm text-gray-600">
+                                    Wind Direction
+                                </p>
+                                <i
+                                    class="fas fa-location-arrow text-green-500"
+                                ></i>
+                            </div>
+                            <p class="text-xl font-bold" id="windDirection">
+                                NW
+                            </p>
+                        </div>
+                        <div class="border rounded-lg p-3">
+                            <div class="flex justify-between">
+                                <p class="text-sm text-gray-600">Pressure</p>
+                                <i class="fas fa-gauge text-purple-500"></i>
+                            </div>
+                            <p class="text-xl font-bold" id="pressure">
+                                1013 hPa
+                            </p>
+                        </div>
+                    </div>
+                </div> -->
+
+                <!-- Wind Speed Chart -->
+                <div class="lg:col-span-2 bg-white rounded-lg shadow p-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        Wind Speed
+                    </h3>
+                    <div class="h-64">
+                        <canvas id="windChart"></canvas>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 bg-white rounded-lg shadow p-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        Daily Energy Production
+                    </h3>
+                    <div class="h-64">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 bg-white rounded-lg shadow p-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        Availabilty & Low Wind
+                    </h3>
+                    <div class="h-64">
+                        <canvas id="availChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Performance Metrics -->
+                <!-- <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        Performance Metrics
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-medium text-gray-700"
+                                    >Efficiency</span
+                                >
+                                <span class="text-sm font-medium text-gray-700"
+                                    >92%</span
+                                >
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div
+                                    class="bg-green-600 h-2.5 rounded-full"
+                                    style="width: 92%"
+                                ></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-medium text-gray-700"
+                                    >Capacity Factor</span
+                                >
+                                <span class="text-sm font-medium text-gray-700"
+                                    >78%</span
+                                >
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div
+                                    class="bg-blue-600 h-2.5 rounded-full"
+                                    style="width: 78%"
+                                ></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-medium text-gray-700"
+                                    >Availability</span
+                                >
+                                <span class="text-sm font-medium text-gray-700"
+                                    >99.8%</span
+                                >
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div
+                                    class="bg-purple-600 h-2.5 rounded-full"
+                                    style="width: 99.8%"
+                                ></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-medium text-gray-700"
+                                    >Monthly Target</span
+                                >
+                                <span class="text-sm font-medium text-gray-700"
+                                    >76%</span
+                                >
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div
+                                    class="bg-amber-600 h-2.5 rounded-full"
+                                    style="width: 76%"
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+                </div> -->
+
+                <!-- Maintenance Status -->
+                <!-- <div class="lg:col-span-3 bg-white rounded-lg shadow p-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        Maintenance Status
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th
+                                        scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                    >
+                                        Component
+                                    </th>
+                                    <th
+                                        scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                    >
+                                        Status
+                                    </th>
+                                    <th
+                                        scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                    >
+                                        Health
+                                    </th>
+                                    <th
+                                        scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                    >
+                                        Last Inspection
+                                    </th>
+                                    <th
+                                        scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                    >
+                                        Next Service
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"
+                                    >
+                                        Gearbox
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        <span
+                                            class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded"
+                                            >Normal</span
+                                        >
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        96%
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        April 10, 2025
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        July 10, 2025
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"
+                                    >
+                                        Generator
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        <span
+                                            class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded"
+                                            >Normal</span
+                                        >
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        98%
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        March 23, 2025
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        June 23, 2025
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"
+                                    >
+                                        Blades
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        <span
+                                            class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded"
+                                            >Minor Issue</span
+                                        >
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        87%
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        April 25, 2025
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        <span class="font-medium text-red-600"
+                                            >May 5, 2025</span
+                                        >
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"
+                                    >
+                                        Control System
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        <span
+                                            class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded"
+                                            >Normal</span
+                                        >
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        99%
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        April 15, 2025
+                                    </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                    >
+                                        July 15, 2025
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div> -->
+
+            <!-- Monthly Production Summary -->
+            <!-- <div class="mt-6 bg-white rounded-lg shadow p-4">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                    Daily Energy Production
+                </h3>
+                <div class="h-64">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div> -->
+
+            <!-- Footer -->
+            <!-- <div class="mt-6 text-center text-sm text-gray-500">
+                <p>© 2025 Wind Energy Systems | Dashboard v2.4.1</p>
+            </div> -->
+        </div>
+
+        <!-- Flowbite -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.8.0/flowbite.min.js"></script>
+
+        <script>
+            // Sample data for charts
+            document.addEventListener("DOMContentLoaded", function () {
+                // Power Output Chart (24 hours)
+                // const powerCtx = document
+                //     .getElementById("powerChart")
+                //     .getContext("2d");
+                // const powerLabels = Array.from(
+                //     { length: 24 },
+                //     (_, i) => `${(i + 1).toString().padStart(2, "0")}:00`,
+                // );
+                // const powerData = [
+                //     2.1, 1.9, 1.7, 1.5, 1.3, 1.4, 1.8, 2.2, 2.5, 2.7, 2.9, 3.0,
+                //     3.1, 3.2, 3.0, 2.9, 2.8, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2, 2.0,
+                // ];
+
+                // new Chart(powerCtx, {
+                //     type: "line",
+                //     data: {
+                //         labels: powerLabels,
+                //         datasets: [
+                //             {
+                //                 label: "Power Output (MW)",
+                //                 data: powerData,
+                //                 borderColor: "#2563eb",
+                //                 backgroundColor: "rgba(37, 99, 235, 0.2)",
+                //                 borderWidth: 2,
+                //                 tension: 0.3,
+                //                 fill: true,
+                //             },
+                //         ],
+                //     },
+                //     options: {
+                //         responsive: true,
+                //         maintainAspectRatio: false,
+                //         scales: {
+                //             y: {
+                //                 beginAtZero: true,
+                //                 title: {
+                //                     display: true,
+                //                     text: "MW",
+                //                 },
+                //             },
+                //         },
+                //     },
+                // });
+
+                // Wind Speed Chart (7 days)
+                const windCtx = document
+                    .getElementById("windChart")
+                    .getContext("2d");
+                const windLabels = [    {% for wind in dayArr %} "{{ wind }}", {% endfor %}            ];
+                const windData = [
+                  [ {% for wind in windAvgArr %} {{ wind }}, {% endfor %}], // Average
+                  [ {% for wind in windMaxArr %} {{ wind }}, {% endfor %}], // Max
+                    // [5.7, 7.2, 8.3, 6.2, 7.8, 9.1, 10.4], // Min
+                ];
+
+                new Chart(windCtx, {
+                    type: "line",
+                    data: {
+                        labels: windLabels,
+                        datasets: [
+                            {
+                                label: "Average Wind Speed (m/s)",
+                                data: windData[0],
+                                borderColor: "#10b981",
+                                backgroundColor: "rgba(16, 185, 129, 0.2)",
+                                borderWidth: 2,
+                                tension: 0.3,
+                                fill: true,
+                            },
+                            {
+                                label: "Max Wind Speed (m/s)",
+                                data: windData[1],
+                                borderColor: "#f59e0b",
+                                borderWidth: 1,
+                                borderDash: [5, 5],
+                                pointStyle: "circle",
+                                fill: false,
+                            },
+                            // {
+                            //     label: "Min Wind Speed (m/s)",
+                            //     data: windData[2],
+                            //     borderColor: "#6366f1",
+                            //     borderWidth: 1,
+                            //     borderDash: [5, 5],
+                            //     pointStyle: "circle",
+                            //     fill: false,
+                            // },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: "m/s",
+                                },
+                            },
+                        },
+                    },
+                });
+ // Wind Speed Chart (7 days)
+                const availCtx = document
+                    .getElementById("availChart")
+                    .getContext("2d");
+                const availLabels = [    {% for wind in dayArr %} "{{ wind }}", {% endfor %}            ];
+                const availData = [
+                  [ {% for wind in availArr %} {{ wind }}, {% endfor %}], // Average
+                  [ {% for wind in lowWindArr %} {{ wind }}, {% endfor %}], // Max
+                    // [5.7, 7.2, 8.3, 6.2, 7.8, 9.1, 10.4], // Min
+                ];
+
+                new Chart(availCtx, {
+                    type: "line",
+                    data: {
+                        labels: availLabels,
+                        datasets: [
+                            {
+                                label: "Availability %",
+                                data: availData[0],
+                                borderColor: "#10b981",
+                                backgroundColor: "rgba(16, 185, 129, 0.2)",
+                                borderWidth: 2,
+                                tension: 0.3,
+                                fill: true,
+                            },
+                            {
+                                label: "Low Wind Time %",
+                                data: availData[1],
+                                borderColor: "#f59e0b",
+                                borderWidth: 1,
+                                borderDash: [5, 5],
+                                pointStyle: "circle",
+                                fill: false,
+                            },
+                            // {
+                            //     label: "Min Wind Speed (m/s)",
+                            //     data: windData[2],
+                            //     borderColor: "#6366f1",
+                            //     borderWidth: 1,
+                            //     borderDash: [5, 5],
+                            //     pointStyle: "circle",
+                            //     fill: false,
+                            // },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: "%",
+                                },
+                            },
+                        },
+                    },
+                });
+
+                // Monthly Production Chart
+                const monthlyCtx = document
+                    .getElementById("monthlyChart")
+                    .getContext("2d");
+                const monthLabels = [{% for wind in dayArr %} "{{ wind }}", {% endfor %}  ];
+                const monthlyData = [
+                  {% for wind in energyYieldArr %} {{ wind }}, {% endfor %}
+                ]; // MWh
+                // const targetData = [
+                //     1000, 1000, 1200, 1200, 1300, 1300, 1400, 1400, 1300, 1200,
+                //     1100, 1000,
+                // ]; // Target MWh
+
+                new Chart(monthlyCtx, {
+                    type: "bar",
+                    data: {
+                        labels: monthLabels,
+                        datasets: [
+                            {
+                                label: "Energy Production (MWh)",
+                                data: monthlyData,
+                                backgroundColor: "rgba(37, 99, 235, 0.7)",
+                                borderColor: "#2563eb",
+                                borderWidth: 1,
+                            },
+                            // {
+                            //     label: "Target (MWh)",
+                            //     data: targetData,
+                            //     type: "line",
+                            //     borderColor: "#ef4444",
+                            //     borderDash: [5, 5],
+                            //     borderWidth: 2,
+                            //     pointBackgroundColor: "#ef4444",
+                            //     fill: false,
+                            // },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: "MWh",
+                                },
+                            },
+                        },
+                    },
+                });
+
+                // // Simulate real-time updates every 10 seconds
+                // setInterval(function () {
+                //     // Update current values with slight variations
+                //     const powerValue = (
+                //         2.5 +
+                //         (Math.random() * 0.6 - 0.3)
+                //     ).toFixed(1);
+                //     const windValue = (18 + (Math.random() * 2 - 1)).toFixed(1);
+                //     const rotorValue = (16 + (Math.random() * 2 - 1)).toFixed(
+                //         1,
+                //     );
+
+                //     document.getElementById("currentPower").innerText =
+                //         powerValue + " MW";
+                //     document.getElementById("windSpeed").innerText =
+                //         windValue + " m/s";
+                //     document.getElementById("rotorSpeed").innerText =
+                //         rotorValue + " RPM";
+
+                //     // Update timestamp
+                //     const now = new Date();
+                //     const hours = now.getHours().toString().padStart(2, "0");
+                //     const minutes = now
+                //         .getMinutes()
+                //         .toString()
+                //         .padStart(2, "0");
+                //     document.getElementById("lastUpdated").innerText =
+                //         `April 30, 2025 ${hours}:${minutes}`;
+                // }, 10000);
+            });
+        </script>
+    </body>
+</html>
