@@ -1,3 +1,6 @@
+[![CC BY-NC-SA 4.0][cc-by-nc-sa-image]][cc-by-nc-sa]
+[cc-by-nc-sa]: http://creativecommons.org/licenses/by-nc-sa/4.0/
+
 # Tools Needed
 
 * [Fastly CLI](https://github.com/fastly/cli)
@@ -15,3 +18,7 @@
 * API calls are cached or saved in the KV store.
 * Deploys happen automaticall when pushed to main branch.
 * Dev uses `go` but in production tinygo is used (See difference between fastly.toml and fastly.dev.toml). This is importaint because not everything works in tinygo (like `encoding/json`) and tinygo results in a smaller binary.
+
+# TODO
+* Tests
+* Yearly data + Plots
