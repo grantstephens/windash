@@ -1,0 +1,4 @@
+
+
+[scripts]
+build = "go build -o bin/main.wasm ./"
