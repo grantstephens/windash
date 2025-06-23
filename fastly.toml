@@ -6,8 +6,8 @@ cloned_from = "https://github.com/fastly/compute-starter-kit-go-tinygo"
 description = ""
 language = "go"
 manifest_version = 3
-name = "windash"
-service_id = "1pXfVmcKpigfpsxyYYYek5"
+name = "windash-big-go"
+service_id = "nqSA4bttH0mRZ7Ab3mmcC5"
 
 [local_server]
 [local_server.backends]
@@ -22,8 +22,8 @@ vensys-data = { file = 'data.json', format = 'json' }
 
 
 [scripts]
-build = "tinygo build -target=wasi -o bin/main.wasm ./"
-# build = "go build -o bin/main.wasm ./"
+# build = "tinygo build -target=wasi -o bin/main.wasm ./"
+build = "go build -o bin/main.wasm ./"
 env_vars = ["GOARCH=wasm", "GOOS=wasip1"]
 post_init = "go get github.com/fastly/compute-sdk-go@latest"
 [localserver]
