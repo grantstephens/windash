@@ -17,6 +17,6 @@ jobs:
       with:
         tinygo-version: '0.32.0'
     - name: Deploy to the Compute platform
-      uses: fastly/compute-actions@v11
+      uses: fastly/compute-actions@v12
       env:
         FASTLY_API_TOKEN: ${{ secrets.FASTLY_API_TOKEN }}
