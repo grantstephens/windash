@@ -1,5 +1,5 @@
-github.com/fastly/compute-sdk-go v1.5.0 h1:vb1yiU5qH8xAAtIyrNTypEKQw1QQ8EMQ8ZwIJE3lI24=
-github.com/fastly/compute-sdk-go v1.5.0/go.mod h1:D72sqisfs4IX6ckaitUNBc2daWkayIxO/fIZgFRHLT0=
+github.com/fastly/compute-sdk-go v1.6.1 h1:0hZkfR2dGHsrkcNindKQCogC3lu7AMt4f8+savRipc8=
+github.com/fastly/compute-sdk-go v1.6.1/go.mod h1:Vp0ABRKndMg9gbKntRkXXXxC7uNJgW64eCods/8IEtU=
 github.com/flosch/pongo2/v6 v6.0.0 h1:lsGru8IAzHgIAw6H2m4PCyleO58I40ow6apih0WprMU=
 github.com/flosch/pongo2/v6 v6.0.0/go.mod h1:CuDpFm47R0uGGE7z13/tTlt1Y6zdxvr2RLT5LJhsHEU=
 github.com/kr/pretty v0.2.1 h1:Fmg33tUaq4/8ym9TJN1x7sLJnHVwhP33CNkpYV/7rwI=
