@@ -160,13 +160,14 @@ func index(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
 	var lowWindArr [30]float64
 	var dayArr [30]string
 	now := time.Now()
+	yesterday := now.Add(-24 * time.Hour)
 	for i, day := range l30.GetArray("data") {
 		windAvgArr[i] = day.GetFloat64("windAvg")
 		windMaxArr[i] = day.GetFloat64("windMax")
 		availArr[i] = day.GetFloat64("availability")
 		lowWindArr[i] = day.GetFloat64("lowWindTime") / 86400 * 100
 		energyYieldArr[i] = day.GetFloat64("energyYield") / 1e3
-		d := now.Add(time.Duration((-30+i)*24) * time.Hour)
+		d := yesterday.Add(time.Duration((-30+i)*24) * time.Hour)
 		dayArr[i] = d.Format("2 Jan")
 	}
 	// fmt.Println("powerPct", par.GetFloat64("data", "0", "powerAvg")/powerNominal*100)
