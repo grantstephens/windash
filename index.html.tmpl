@@ -4,7 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Wind Turbine Dashboard</title>
-                <script src="https://cdn.jsdelivr.net/npm/tailwindcss@4.1.5/dist/lib.min.js"></script>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@4/index.css" rel="stylesheet">
         <link
             href="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.css"
             rel="stylesheet"
@@ -35,7 +35,7 @@
             </div>
 
             <!-- Current Status Overview -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                 <div class="bg-white rounded-lg shadow p-4">
                     <div class="flex justify-between">
                         <div>
@@ -124,6 +124,32 @@
                     <!-- <p class="text-xs text-gray-500 mt-4">
                         Daily target: 50 MWh
                     </p> -->
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Year to Date (2026)</p>
+                            <h2
+                                class="text-2xl font-bold text-indigo-600"
+                                id="ytdTotal"
+                            >
+                                {{ ytdTotal|floatformat:1 }} MWh
+                            </h2>
+                        </div>
+                        <div class="text-indigo-500">
+                            <i class="fas fa-chart-line text-2xl"></i>
+                        </div>
+                    </div>
+                    {% if ytdYoyChange != 0 %}
+                    <p class="text-xs text-gray-500 mt-2">
+                        {% if ytdYoyChange > 0 %}
+                        <span class="text-green-600">↑ +{{ ytdYoyChange|floatformat:1 }}%</span> vs YTD 2025
+                        {% else %}
+                        <span class="text-red-600">↓ {{ ytdYoyChange|floatformat:1 }}%</span> vs YTD 2025
+                        {% endif %}
+                    </p>
+                    {% endif %}
                 </div>
             </div>
 
@@ -215,17 +241,41 @@
                     </div>
                 </div>
                 <div class="lg:col-span-2 bg-white rounded-lg shadow p-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                        Monthly Energy Production (Last 12 Months)
-                    </h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            Monthly Energy Production (Last 12 Months)
+                        </h3>
+                        <div class="flex gap-2">
+                            <a href="/export/monthly?format=csv"
+                               class="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">
+                                <i class="fas fa-download"></i> CSV
+                            </a>
+                            <a href="/export/monthly?format=json"
+                               class="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">
+                                <i class="fas fa-download"></i> JSON
+                            </a>
+                        </div>
+                    </div>
                     <div class="h-64">
                         <canvas id="monthlyProductionChart"></canvas>
                     </div>
                 </div>
                 <div class="lg:col-span-2 bg-white rounded-lg shadow p-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                        Yearly Energy Production (Since 2022)
-                    </h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            Yearly Energy Production (Since 2022)
+                        </h3>
+                        <div class="flex gap-2">
+                            <a href="/export/yearly?format=csv"
+                               class="px-3 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600">
+                                <i class="fas fa-download"></i> CSV
+                            </a>
+                            <a href="/export/yearly?format=json"
+                               class="px-3 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600">
+                                <i class="fas fa-download"></i> JSON
+                            </a>
+                        </div>
+                    </div>
                     <div class="h-64">
                         <canvas id="yearlyProductionChart"></canvas>
                     </div>
@@ -715,6 +765,17 @@
                     .getContext("2d");
                 const monthlyProdLabels = [{% for month in monthlyLabels %} "{{ month }}", {% endfor %}];
                 const monthlyProdData = [{% for yield in monthlyYield %} {{ yield }}, {% endfor %}];
+                const monthlyIsCurrent = [{% for isCurrent in monthlyIsCurrent %}{% if isCurrent %}true{% else %}false{% endif %},{% endfor %}];
+                const monthlyCapacityFactor = [{% for cf in monthlyCapacityFactor %} {{ cf }}, {% endfor %}];
+                const monthlyYoyChange = [{% for yoy in monthlyYoyChange %} {{ yoy }}, {% endfor %}];
+
+                // Dynamic background colors - highlight current month
+                const monthlyBackgroundColors = monthlyProdData.map((val, idx) =>
+                    monthlyIsCurrent[idx] ? "rgba(16, 185, 129, 1)" : "rgba(16, 185, 129, 0.7)"
+                );
+                const monthlyBorderColors = monthlyProdData.map((val, idx) =>
+                    monthlyIsCurrent[idx] ? "#059669" : "#10b981"
+                );
 
                 new Chart(monthlyProdCtx, {
                     type: "bar",
@@ -723,9 +784,9 @@
                         datasets: [{
                             label: "Monthly Energy Production (MWh)",
                             data: monthlyProdData,
-                            backgroundColor: "rgba(16, 185, 129, 0.7)",
-                            borderColor: "#10b981",
-                            borderWidth: 1,
+                            backgroundColor: monthlyBackgroundColors,
+                            borderColor: monthlyBorderColors,
+                            borderWidth: 2,
                         }],
                     },
                     options: {
@@ -740,6 +801,26 @@
                                 },
                             },
                         },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function(context) {
+                                        const idx = context.dataIndex;
+                                        const cf = monthlyCapacityFactor[idx].toFixed(1);
+                                        const yoy = monthlyYoyChange[idx];
+                                        let result = `Capacity Factor: ${cf}%`;
+                                        if (yoy !== 0) {
+                                            const sign = yoy > 0 ? '+' : '';
+                                            result += `\nYoY: ${sign}${yoy.toFixed(1)}%`;
+                                        }
+                                        if (monthlyIsCurrent[idx]) {
+                                            result += '\n(Incomplete - Current Month)';
+                                        }
+                                        return result;
+                                    }
+                                }
+                            }
+                        }
                     },
                 });
 
@@ -749,6 +830,8 @@
                     .getContext("2d");
                 const yearlyProdLabels = [{% for year in yearlyLabels %} "{{ year }}", {% endfor %}];
                 const yearlyProdData = [{% for yield in yearlyYield %} {{ yield }}, {% endfor %}];
+                const yearlyCapacityFactor = [{% for cf in yearlyCapacityFactor %} {{ cf }}, {% endfor %}];
+                const yearlyYoyChange = [{% for yoy in yearlyYoyChange %} {{ yoy }}, {% endfor %}];
 
                 new Chart(yearlyProdCtx, {
                     type: "bar",
@@ -774,6 +857,23 @@
                                 },
                             },
                         },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function(context) {
+                                        const idx = context.dataIndex;
+                                        const cf = yearlyCapacityFactor[idx].toFixed(1);
+                                        const yoy = yearlyYoyChange[idx];
+                                        let result = `Capacity Factor: ${cf}%`;
+                                        if (yoy !== 0) {
+                                            const sign = yoy > 0 ? '+' : '';
+                                            result += `\nYoY: ${sign}${yoy.toFixed(1)}%`;
+                                        }
+                                        return result;
+                                    }
+                                }
+                            }
+                        }
                     },
                 });
 

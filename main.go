@@ -102,6 +102,14 @@ func main() {
 			history(ctx, w, r)
 			return
 		}
+		if r.URL.Path == "/export/monthly" {
+			exportMonthly(ctx, w, r)
+			return
+		}
+		if r.URL.Path == "/export/yearly" {
+			exportYearly(ctx, w, r)
+			return
+		}
 
 		// Catch all other requests and return a 404.
 		w.WriteHeader(fsthttp.StatusNotFound)
@@ -167,7 +175,7 @@ func index(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
 		availArr[i] = day.GetFloat64("availability")
 		lowWindArr[i] = day.GetFloat64("lowWindTime") / 86400 * 100
 		energyYieldArr[i] = day.GetFloat64("energyYield") / 1e3
-		d := yesterday.Add(time.Duration((-30+i)*24) * time.Hour)
+		d := yesterday.Add(time.Duration((-29+i)*24) * time.Hour)
 		dayArr[i] = d.Format("2 Jan")
 	}
 
@@ -186,11 +194,23 @@ func index(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
 	}
 	var monthlyLabelsArr [12]string
 	var monthlyYieldArr [12]float64
+	var monthlyIsCurrentArr [12]bool
+	var monthlyCapacityFactorArr [12]float64
+	var monthlyYoyChangeArr [12]float64
 	for i, m := range monthly.GetArray("months") {
 		monthlyLabelsArr[i] = string(m.GetStringBytes())
 	}
 	for i, y := range monthly.GetArray("energyYield") {
 		monthlyYieldArr[i] = y.GetFloat64()
+	}
+	for i, c := range monthly.GetArray("isCurrentMonth") {
+		monthlyIsCurrentArr[i] = c.GetBool()
+	}
+	for i, cf := range monthly.GetArray("capacityFactor") {
+		monthlyCapacityFactorArr[i] = cf.GetFloat64()
+	}
+	for i, yoy := range monthly.GetArray("yoyChange") {
+		monthlyYoyChangeArr[i] = yoy.GetFloat64()
 	}
 
 	// Get yearly data
@@ -211,11 +231,34 @@ func index(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
 	yearCount := time.Now().Year() - 2022 + 1
 	yearlyLabelsArr := make([]string, yearCount)
 	yearlyYieldArr := make([]float64, yearCount)
+	yearlyCapacityFactorArr := make([]float64, yearCount)
+	yearlyYoyChangeArr := make([]float64, yearCount)
 	for i, y := range yearly.GetArray("years") {
 		yearlyLabelsArr[i] = string(y.GetStringBytes())
 	}
 	for i, y := range yearly.GetArray("energyYield") {
 		yearlyYieldArr[i] = y.GetFloat64()
+	}
+	for i, cf := range yearly.GetArray("capacityFactor") {
+		yearlyCapacityFactorArr[i] = cf.GetFloat64()
+	}
+	for i, yoy := range yearly.GetArray("yoyChange") {
+		yearlyYoyChangeArr[i] = yoy.GetFloat64()
+	}
+
+	// Get year-to-date total
+	ytdTotal, err := getYearToDateTotal(ctx)
+	if err != nil {
+		w.WriteHeader(fsthttp.StatusInternalServerError)
+		fmt.Println(err)
+		return
+	}
+
+	// Calculate YTD year-over-year change
+	ytdYoyChange := 0.0
+	prevYearYTD, err := getYearToDateTotalForYear(ctx, time.Now().Year()-1, int(time.Now().Month()))
+	if err == nil && prevYearYTD > 0 {
+		ytdYoyChange = ((ytdTotal - prevYearYTD) / prevYearYTD) * 100
 	}
 
 	// fmt.Println("powerPct", par.GetFloat64("data", "0", "powerAvg")/powerNominal*100)
@@ -232,10 +275,17 @@ func index(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
 		"lowWindArr":     lowWindArr,
 		"genSpeed":       mean.GetFloat64("data", "0", "data", "GeneratorSpeedAvg"),
 		"lastUpdate":     time.Now().Add(-time.Second * time.Duration(age)).Format(time.UnixDate),
-		"monthlyLabels":  monthlyLabelsArr,
-		"monthlyYield":   monthlyYieldArr,
-		"yearlyLabels":   yearlyLabelsArr,
-		"yearlyYield":    yearlyYieldArr,
+		"monthlyLabels":         monthlyLabelsArr,
+		"monthlyYield":          monthlyYieldArr,
+		"monthlyIsCurrent":      monthlyIsCurrentArr,
+		"monthlyCapacityFactor": monthlyCapacityFactorArr,
+		"monthlyYoyChange":      monthlyYoyChangeArr,
+		"yearlyLabels":          yearlyLabelsArr,
+		"yearlyYield":           yearlyYieldArr,
+		"yearlyCapacityFactor":  yearlyCapacityFactorArr,
+		"yearlyYoyChange":       yearlyYoyChangeArr,
+		"ytdTotal":              ytdTotal,
+		"ytdYoyChange":          ytdYoyChange,
 	}, w)
 	if err != nil {
 		w.WriteHeader(fsthttp.StatusInternalServerError)
@@ -274,7 +324,7 @@ func last30(ctx context.Context) (string, error) {
 		return "", err
 	}
 	currentTime := time.Now()
-	end := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day()-1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, time.UTC)
 	start := end.Add(-30 * 24 * time.Hour)
 	end = end.Add(-time.Second)
 	prev := start.Add(-time.Second)
@@ -463,6 +513,9 @@ func getLast12Months(ctx context.Context) (string, error) {
 
 	var monthLabels []string
 	var energyYields []float64
+	var isCurrentMonth []bool
+	var capacityFactors []float64
+	var yoyChanges []float64
 
 	for i := 0; i < 12; i++ {
 		targetMonth := startMonth.AddDate(0, i, 0)
@@ -475,10 +528,32 @@ func getLast12Months(ctx context.Context) (string, error) {
 			return "", err
 		}
 
+		// Get previous year's same month for YoY comparison
+		prevYearYield, err := getMonthlyData(ctx, y-1, m)
+		yoyChange := 0.0
+		if err == nil && prevYearYield > 0 {
+			yoyChange = ((energyYield - prevYearYield) / prevYearYield) * 100
+		}
+
+		// Check if this is the current month
+		isCurrent := (y == now.Year() && time.Month(m) == now.Month())
+
+		// Calculate capacity factor
+		nextMonth := targetMonth.AddDate(0, 1, 0)
+		hoursInMonth := nextMonth.Sub(targetMonth).Hours()
+		theoreticalMaxMWh := (powerNominal / 1000.0) * hoursInMonth
+		capacityFactor := 0.0
+		if theoreticalMaxMWh > 0 {
+			capacityFactor = (energyYield / theoreticalMaxMWh) * 100
+		}
+
 		// Format month label
 		monthLabel := targetMonth.Format("Jan 2006")
 		monthLabels = append(monthLabels, monthLabel)
 		energyYields = append(energyYields, energyYield)
+		isCurrentMonth = append(isCurrentMonth, isCurrent)
+		capacityFactors = append(capacityFactors, capacityFactor)
+		yoyChanges = append(yoyChanges, yoyChange)
 	}
 
 	// Build JSON response
@@ -495,6 +570,31 @@ func getLast12Months(ctx context.Context) (string, error) {
 			result += ","
 		}
 		result += fmt.Sprintf(`%f`, yield)
+	}
+	result += `],"isCurrentMonth":[`
+	for i, isCurrent := range isCurrentMonth {
+		if i > 0 {
+			result += ","
+		}
+		if isCurrent {
+			result += "true"
+		} else {
+			result += "false"
+		}
+	}
+	result += `],"capacityFactor":[`
+	for i, cf := range capacityFactors {
+		if i > 0 {
+			result += ","
+		}
+		result += fmt.Sprintf(`%f`, cf)
+	}
+	result += `],"yoyChange":[`
+	for i, yoy := range yoyChanges {
+		if i > 0 {
+			result += ","
+		}
+		result += fmt.Sprintf(`%f`, yoy)
 	}
 	result += `]}`
 
@@ -551,6 +651,8 @@ func getYearsSince2020(ctx context.Context) (string, error) {
 
 	var yearLabels []string
 	var energyYields []float64
+	var capacityFactors []float64
+	var yoyChanges []float64
 
 	for year := startYear; year <= currentYear; year++ {
 		// Get yearly data (in MWh)
@@ -559,9 +661,28 @@ func getYearsSince2020(ctx context.Context) (string, error) {
 			return "", err
 		}
 
+		// Get previous year for YoY comparison
+		prevYearYield, err := getYearlyData(ctx, year-1)
+		yoyChange := 0.0
+		if err == nil && prevYearYield > 0 {
+			yoyChange = ((energyYield - prevYearYield) / prevYearYield) * 100
+		}
+
+		// Calculate capacity factor for the year
+		startDate := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
+		endDate := time.Date(year+1, 1, 1, 0, 0, 0, 0, time.UTC)
+		hoursInYear := endDate.Sub(startDate).Hours()
+		theoreticalMaxMWh := (powerNominal / 1000.0) * hoursInYear
+		capacityFactor := 0.0
+		if theoreticalMaxMWh > 0 {
+			capacityFactor = (energyYield / theoreticalMaxMWh) * 100
+		}
+
 		yearLabels = append(yearLabels, fmt.Sprintf("%d", year))
 		// Convert MWh to GWh
 		energyYields = append(energyYields, energyYield/1000.0)
+		capacityFactors = append(capacityFactors, capacityFactor)
+		yoyChanges = append(yoyChanges, yoyChange)
 	}
 
 	// Build JSON response
@@ -579,9 +700,52 @@ func getYearsSince2020(ctx context.Context) (string, error) {
 		}
 		result += fmt.Sprintf(`%f`, yield)
 	}
+	result += `],"capacityFactor":[`
+	for i, cf := range capacityFactors {
+		if i > 0 {
+			result += ","
+		}
+		result += fmt.Sprintf(`%f`, cf)
+	}
+	result += `],"yoyChange":[`
+	for i, yoy := range yoyChanges {
+		if i > 0 {
+			result += ","
+		}
+		result += fmt.Sprintf(`%f`, yoy)
+	}
 	result += `]}`
 
 	return result, nil
+}
+
+func getYearToDateTotal(ctx context.Context) (float64, error) {
+	now := time.Now()
+	currentYear := now.Year()
+	currentMonth := int(now.Month())
+
+	var ytdTotal float64
+	for month := 1; month <= currentMonth; month++ {
+		monthlyYield, err := getMonthlyData(ctx, currentYear, month)
+		if err != nil {
+			return 0, err
+		}
+		ytdTotal += monthlyYield
+	}
+
+	return ytdTotal, nil
+}
+
+func getYearToDateTotalForYear(ctx context.Context, year int, upToMonth int) (float64, error) {
+	var ytdTotal float64
+	for month := 1; month <= upToMonth; month++ {
+		monthlyYield, err := getMonthlyData(ctx, year, month)
+		if err != nil {
+			return 0, err
+		}
+		ytdTotal += monthlyYield
+	}
+	return ytdTotal, nil
 }
 
 func history(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
@@ -703,4 +867,82 @@ func getLatestMean(ctx context.Context) (string, uint32, error) {
 
 func favicon(_ context.Context, w fsthttp.ResponseWriter, _ *fsthttp.Request) {
 	io.Copy(w, bytes.NewReader(faviconBytes))
+}
+
+func exportMonthly(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
+	format := r.URL.Query().Get("format")
+
+	monthlyData, err := getLast12Months(ctx)
+	if err != nil {
+		w.WriteHeader(fsthttp.StatusInternalServerError)
+		fmt.Fprintf(w, "Error fetching monthly data: %v\n", err)
+		return
+	}
+
+	monthly, err := fastjson.Parse(monthlyData)
+	if err != nil {
+		w.WriteHeader(fsthttp.StatusInternalServerError)
+		fmt.Fprintf(w, "Error parsing data: %v\n", err)
+		return
+	}
+
+	if format == "csv" {
+		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Content-Disposition", "attachment; filename=monthly_production.csv")
+
+		// Write CSV header
+		fmt.Fprintln(w, "Month,Energy (MWh),Capacity Factor (%),YoY Change (%)")
+
+		// Write data rows
+		for i, m := range monthly.GetArray("months") {
+			month := string(m.GetStringBytes())
+			yield := monthly.GetArray("energyYield")[i].GetFloat64()
+			cf := monthly.GetArray("capacityFactor")[i].GetFloat64()
+			yoy := monthly.GetArray("yoyChange")[i].GetFloat64()
+			fmt.Fprintf(w, "%s,%.2f,%.2f,%.2f\n", month, yield, cf, yoy)
+		}
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Disposition", "attachment; filename=monthly_production.json")
+		fmt.Fprint(w, monthlyData)
+	}
+}
+
+func exportYearly(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
+	format := r.URL.Query().Get("format")
+
+	yearlyData, err := getYearsSince2020(ctx)
+	if err != nil {
+		w.WriteHeader(fsthttp.StatusInternalServerError)
+		fmt.Fprintf(w, "Error fetching yearly data: %v\n", err)
+		return
+	}
+
+	yearly, err := fastjson.Parse(yearlyData)
+	if err != nil {
+		w.WriteHeader(fsthttp.StatusInternalServerError)
+		fmt.Fprintf(w, "Error parsing data: %v\n", err)
+		return
+	}
+
+	if format == "csv" {
+		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Content-Disposition", "attachment; filename=yearly_production.csv")
+
+		// Write CSV header
+		fmt.Fprintln(w, "Year,Energy (GWh),Capacity Factor (%),YoY Change (%)")
+
+		// Write data rows
+		for i, y := range yearly.GetArray("years") {
+			year := string(y.GetStringBytes())
+			yield := yearly.GetArray("energyYield")[i].GetFloat64()
+			cf := yearly.GetArray("capacityFactor")[i].GetFloat64()
+			yoy := yearly.GetArray("yoyChange")[i].GetFloat64()
+			fmt.Fprintf(w, "%s,%.2f,%.2f,%.2f\n", year, yield, cf, yoy)
+		}
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Disposition", "attachment; filename=yearly_production.json")
+		fmt.Fprint(w, yearlyData)
+	}
 }
