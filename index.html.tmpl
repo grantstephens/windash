@@ -214,6 +214,22 @@
                         <canvas id="availChart"></canvas>
                     </div>
                 </div>
+                <div class="lg:col-span-2 bg-white rounded-lg shadow p-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        Monthly Energy Production (Last 12 Months)
+                    </h3>
+                    <div class="h-64">
+                        <canvas id="monthlyProductionChart"></canvas>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 bg-white rounded-lg shadow p-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        Yearly Energy Production (Since 2022)
+                    </h3>
+                    <div class="h-64">
+                        <canvas id="yearlyProductionChart"></canvas>
+                    </div>
+                </div>
 
                 <!-- Performance Metrics -->
                 <!-- <div class="bg-white rounded-lg shadow p-4">
@@ -687,6 +703,74 @@
                                 title: {
                                     display: true,
                                     text: "MWh",
+                                },
+                            },
+                        },
+                    },
+                });
+
+                // Monthly Production Chart (12 months)
+                const monthlyProdCtx = document
+                    .getElementById("monthlyProductionChart")
+                    .getContext("2d");
+                const monthlyProdLabels = [{% for month in monthlyLabels %} "{{ month }}", {% endfor %}];
+                const monthlyProdData = [{% for yield in monthlyYield %} {{ yield }}, {% endfor %}];
+
+                new Chart(monthlyProdCtx, {
+                    type: "bar",
+                    data: {
+                        labels: monthlyProdLabels,
+                        datasets: [{
+                            label: "Monthly Energy Production (MWh)",
+                            data: monthlyProdData,
+                            backgroundColor: "rgba(16, 185, 129, 0.7)",
+                            borderColor: "#10b981",
+                            borderWidth: 1,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: "MWh",
+                                },
+                            },
+                        },
+                    },
+                });
+
+                // Yearly Production Chart (2022 to current)
+                const yearlyProdCtx = document
+                    .getElementById("yearlyProductionChart")
+                    .getContext("2d");
+                const yearlyProdLabels = [{% for year in yearlyLabels %} "{{ year }}", {% endfor %}];
+                const yearlyProdData = [{% for yield in yearlyYield %} {{ yield }}, {% endfor %}];
+
+                new Chart(yearlyProdCtx, {
+                    type: "bar",
+                    data: {
+                        labels: yearlyProdLabels,
+                        datasets: [{
+                            label: "Yearly Energy Production (GWh)",
+                            data: yearlyProdData,
+                            backgroundColor: "rgba(139, 92, 246, 0.7)",
+                            borderColor: "#8b5cf6",
+                            borderWidth: 1,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: "GWh",
                                 },
                             },
                         },

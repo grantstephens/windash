@@ -170,6 +170,54 @@ func index(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
 		d := yesterday.Add(time.Duration((-30+i)*24) * time.Hour)
 		dayArr[i] = d.Format("2 Jan")
 	}
+
+	// Get monthly data
+	monthlyData, err := getLast12Months(ctx)
+	if err != nil {
+		w.WriteHeader(fsthttp.StatusInternalServerError)
+		fmt.Println(err)
+		return
+	}
+	monthly, err := fastjson.Parse(monthlyData)
+	if err != nil {
+		w.WriteHeader(fsthttp.StatusInternalServerError)
+		fmt.Println(err)
+		return
+	}
+	var monthlyLabelsArr [12]string
+	var monthlyYieldArr [12]float64
+	for i, m := range monthly.GetArray("months") {
+		monthlyLabelsArr[i] = string(m.GetStringBytes())
+	}
+	for i, y := range monthly.GetArray("energyYield") {
+		monthlyYieldArr[i] = y.GetFloat64()
+	}
+
+	// Get yearly data
+	yearlyData, err := getYearsSince2020(ctx)
+	if err != nil {
+		w.WriteHeader(fsthttp.StatusInternalServerError)
+		fmt.Println(err)
+		return
+	}
+	yearly, err := fastjson.Parse(yearlyData)
+	if err != nil {
+		w.WriteHeader(fsthttp.StatusInternalServerError)
+		fmt.Println(err)
+		return
+	}
+
+	// Calculate dynamic array size (2022 to current year)
+	yearCount := time.Now().Year() - 2022 + 1
+	yearlyLabelsArr := make([]string, yearCount)
+	yearlyYieldArr := make([]float64, yearCount)
+	for i, y := range yearly.GetArray("years") {
+		yearlyLabelsArr[i] = string(y.GetStringBytes())
+	}
+	for i, y := range yearly.GetArray("energyYield") {
+		yearlyYieldArr[i] = y.GetFloat64()
+	}
+
 	// fmt.Println("powerPct", par.GetFloat64("data", "0", "powerAvg")/powerNominal*100)
 	err = t.ExecuteWriter(pongo2.Context{
 		"energyYield":    par.GetFloat64("data", "0", "energyYield"),
@@ -184,6 +232,10 @@ func index(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
 		"lowWindArr":     lowWindArr,
 		"genSpeed":       mean.GetFloat64("data", "0", "data", "GeneratorSpeedAvg"),
 		"lastUpdate":     time.Now().Add(-time.Second * time.Duration(age)).Format(time.UnixDate),
+		"monthlyLabels":  monthlyLabelsArr,
+		"monthlyYield":   monthlyYieldArr,
+		"yearlyLabels":   yearlyLabelsArr,
+		"yearlyYield":    yearlyYieldArr,
 	}, w)
 	if err != nil {
 		w.WriteHeader(fsthttp.StatusInternalServerError)
@@ -317,6 +369,219 @@ func getYear(ctx context.Context, year int) (string, error) {
 	}
 
 	return string(data), nil
+}
+
+func getMonthlyData(ctx context.Context, year int, month int) (float64, error) {
+	store, err := kvstore.Open(kvStoreName)
+	if err != nil {
+		return 0, err
+	}
+
+	now := time.Now()
+	currentYear, currentMonth, _ := now.Date()
+	isCurrentMonth := (year == currentYear && time.Month(month) == currentMonth)
+
+	keyStr := fmt.Sprintf("monthly-%04d%02d", year, month)
+
+	// Check cache if not current month
+	if !isCurrentMonth {
+		if entry, err := store.Lookup(keyStr); err == nil {
+			var p fastjson.Parser
+			v, err := p.Parse(entry.String())
+			if err != nil {
+				return 0, err
+			}
+			return v.GetFloat64("data", "0", "energyYield"), nil
+		}
+	}
+
+	// Calculate month boundaries
+	start := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+	end := start.AddDate(0, 1, 0).Add(-time.Second) // Last second of month
+
+	// Fetch data from API
+	baseURL := fmt.Sprintf("https://%s/api/v1.0/Customer/Performance", backendURL)
+	parsedURL, err := url.Parse(baseURL)
+	if err != nil {
+		return 0, err
+	}
+
+	query := url.Values{}
+	query.Add("From", fmt.Sprintf("%d", start.Unix()))
+	query.Add("To", fmt.Sprintf("%d", end.Unix()))
+	parsedURL.RawQuery = query.Encode()
+
+	req, err := fsthttp.NewRequest("GET", parsedURL.String(), nil)
+	if err != nil {
+		return 0, err
+	}
+
+	req.Header.Set("ApiKey", getKey())
+	req.Header.Set("TID", TID)
+	req.CacheOptions = fsthttp.CacheOptions{TTL: 10 * 60}
+
+	resp, err := req.Send(ctx, backendName)
+	if err != nil {
+		return 0, err
+	}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	// Parse and sum energy yield
+	var p fastjson.Parser
+	v, err := p.Parse(string(data))
+	if err != nil {
+		return 0, err
+	}
+
+	totalEnergyYield := 0.0
+	dataArray := v.GetArray("data")
+	for _, day := range dataArray {
+		totalEnergyYield += day.GetFloat64("energyYield")
+	}
+
+	// Convert from kWh to MWh
+	totalEnergyYieldMWh := totalEnergyYield / 1000.0
+
+	// Store in KV if not current month
+	if !isCurrentMonth {
+		storedData := fmt.Sprintf(`{"data":[{"month":"%04d%02d","energyYield":%f}]}`, year, month, totalEnergyYieldMWh)
+		store.Insert(keyStr, bytes.NewReader([]byte(storedData)))
+	}
+
+	return totalEnergyYieldMWh, nil
+}
+
+func getLast12Months(ctx context.Context) (string, error) {
+	now := time.Now()
+	// Include current month (even if incomplete)
+	year, month, _ := now.Date()
+	currentMonth := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
+	startMonth := currentMonth.AddDate(0, -11, 0)
+
+	var monthLabels []string
+	var energyYields []float64
+
+	for i := 0; i < 12; i++ {
+		targetMonth := startMonth.AddDate(0, i, 0)
+		y := targetMonth.Year()
+		m := int(targetMonth.Month())
+
+		// Get monthly data
+		energyYield, err := getMonthlyData(ctx, y, m)
+		if err != nil {
+			return "", err
+		}
+
+		// Format month label
+		monthLabel := targetMonth.Format("Jan 2006")
+		monthLabels = append(monthLabels, monthLabel)
+		energyYields = append(energyYields, energyYield)
+	}
+
+	// Build JSON response
+	result := `{"months":[`
+	for i, label := range monthLabels {
+		if i > 0 {
+			result += ","
+		}
+		result += fmt.Sprintf(`"%s"`, label)
+	}
+	result += `],"energyYield":[`
+	for i, yield := range energyYields {
+		if i > 0 {
+			result += ","
+		}
+		result += fmt.Sprintf(`%f`, yield)
+	}
+	result += `]}`
+
+	return result, nil
+}
+
+func getYearlyData(ctx context.Context, year int) (float64, error) {
+	store, err := kvstore.Open(kvStoreName)
+	if err != nil {
+		return 0, err
+	}
+
+	now := time.Now()
+	currentYear := now.Year()
+	isCurrentYear := (year == currentYear)
+
+	keyStr := fmt.Sprintf("yearly-%04d", year)
+
+	// Check cache if not current year
+	if !isCurrentYear {
+		if entry, err := store.Lookup(keyStr); err == nil {
+			var p fastjson.Parser
+			v, err := p.Parse(entry.String())
+			if err != nil {
+				return 0, err
+			}
+			return v.GetFloat64("data", "0", "energyYield"), nil
+		}
+	}
+
+	// Sum monthly data for the year
+	totalEnergyYield := 0.0
+	for month := 1; month <= 12; month++ {
+		monthlyYield, err := getMonthlyData(ctx, year, month)
+		if err != nil {
+			return 0, err
+		}
+		totalEnergyYield += monthlyYield
+	}
+
+	// Store in KV if not current year
+	if !isCurrentYear {
+		storedData := fmt.Sprintf(`{"data":[{"year":"%04d","energyYield":%f}]}`, year, totalEnergyYield)
+		store.Insert(keyStr, bytes.NewReader([]byte(storedData)))
+	}
+
+	return totalEnergyYield, nil
+}
+
+func getYearsSince2020(ctx context.Context) (string, error) {
+	now := time.Now()
+	currentYear := now.Year()
+	startYear := 2022
+
+	var yearLabels []string
+	var energyYields []float64
+
+	for year := startYear; year <= currentYear; year++ {
+		// Get yearly data (in MWh)
+		energyYield, err := getYearlyData(ctx, year)
+		if err != nil {
+			return "", err
+		}
+
+		yearLabels = append(yearLabels, fmt.Sprintf("%d", year))
+		// Convert MWh to GWh
+		energyYields = append(energyYields, energyYield/1000.0)
+	}
+
+	// Build JSON response
+	result := `{"years":[`
+	for i, label := range yearLabels {
+		if i > 0 {
+			result += ","
+		}
+		result += fmt.Sprintf(`"%s"`, label)
+	}
+	result += `],"energyYield":[`
+	for i, yield := range energyYields {
+		if i > 0 {
+			result += ","
+		}
+		result += fmt.Sprintf(`%f`, yield)
+	}
+	result += `]}`
+
+	return result, nil
 }
 
 func history(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {

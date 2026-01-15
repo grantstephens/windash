@@ -1,4 +1,13 @@
-
+[local_server]
+[local_server.backends]
+[local_server.backends.vensys]
+url = "https://api.vensys.de:8443"
+[local_server.backends.vensys-cached]
+url = "https://vensys.global.ssl.fastly.net"
+[local_server.secret_stores]
+vensys-secret = { file = 'secret.json', format = 'json' }
+[local_server.kv_stores]
+vensys-data = { file = 'data.json', format = 'json' }
 
 [scripts]
 build = "go build -o bin/main.wasm ./"
