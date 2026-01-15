@@ -15,7 +15,8 @@ jobs:
           go-version-file: "go.mod"
     - uses: acifani/setup-tinygo@v2
       with:
-        tinygo-version: '0.32.0'
+        tinygo-version: '0.40.1'
+
     - name: Deploy to the Compute platform
       uses: fastly/compute-actions@v12
       env:

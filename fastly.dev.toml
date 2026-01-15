@@ -10,4 +10,5 @@ vensys-secret = { file = 'secret.json', format = 'json' }
 vensys-data = { file = 'data.json', format = 'json' }
 
 [scripts]
-build = "go build -o bin/main.wasm ./"
+# build = "go build -o bin/main.wasm ./"
+build = "tinygo build -target=wasi -o bin/main.wasm ./"
