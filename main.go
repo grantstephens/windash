@@ -27,6 +27,9 @@ var indexTemplate string
 //go:embed favicon.ico
 var faviconBytes []byte
 
+//go:embed favicon.svg
+var faviconSVGBytes []byte
+
 // The entry point for your application.
 //
 // Use this function to define your main request handling logic. It could be
@@ -76,6 +79,11 @@ func main() {
 		}
 		if r.URL.Path == "/favicon.ico" {
 			favicon(ctx, w, r)
+			return
+		}
+		if r.URL.Path == "/favicon.svg" {
+			w.Header().Set("Content-Type", "image/svg+xml")
+			io.Copy(w, bytes.NewReader(faviconSVGBytes))
 			return
 		}
 		if r.URL.Path == "/last30" {
