@@ -495,8 +495,8 @@ func getMonthlyData(ctx context.Context, year int, month int) (float64, error) {
 	// Convert from kWh to MWh
 	totalEnergyYieldMWh := totalEnergyYield / 1000.0
 
-	// Store in KV if not current month
-	if !isCurrentMonth {
+	// Store in KV if not current month and we have valid data
+	if !isCurrentMonth && totalEnergyYieldMWh > 0 {
 		storedData := fmt.Sprintf(`{"data":[{"month":"%04d%02d","energyYield":%f}]}`, year, month, totalEnergyYieldMWh)
 		store.Insert(keyStr, bytes.NewReader([]byte(storedData)))
 	}
