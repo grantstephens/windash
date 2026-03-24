@@ -250,11 +250,13 @@
                         </h3>
                         <div class="flex gap-2">
                             <a href="/export/monthly?format=csv"
-                               class="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">
+                               class="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                               data-umami-event="export-monthly-csv">
                                 <i class="fas fa-download"></i> CSV
                             </a>
                             <a href="/export/monthly?format=json"
-                               class="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">
+                               class="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                               data-umami-event="export-monthly-json">
                                 <i class="fas fa-download"></i> JSON
                             </a>
                         </div>
@@ -270,11 +272,13 @@
                         </h3>
                         <div class="flex gap-2">
                             <a href="/export/yearly?format=csv"
-                               class="px-3 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600">
+                               class="px-3 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600"
+                               data-umami-event="export-yearly-csv">
                                 <i class="fas fa-download"></i> CSV
                             </a>
                             <a href="/export/yearly?format=json"
-                               class="px-3 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600">
+                               class="px-3 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600"
+                               data-umami-event="export-yearly-json">
                                 <i class="fas fa-download"></i> JSON
                             </a>
                         </div>
@@ -538,9 +542,9 @@
             </div> -->
 
             <!-- Footer -->
-            <!-- <div class="mt-6 text-center text-sm text-gray-500">
-                <p>© 2025 Wind Energy Systems | Dashboard v2.4.1</p>
-            </div> -->
+            <div class="mt-6 text-center text-sm text-gray-500">
+                <p>Built with ❤️ and powered by <a href="https://www.fastly.com" class="underline hover:text-gray-700">Fastly</a> · v{{ version }}</p>
+            </div>
         </div>
 
         <!-- Flowbite -->

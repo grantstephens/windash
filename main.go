@@ -83,6 +83,7 @@ func main() {
 		}
 		if r.URL.Path == "/favicon.svg" {
 			w.Header().Set("Content-Type", "image/svg+xml")
+			w.Header().Set("Cache-Control", "public, max-age=86400")
 			io.Copy(w, bytes.NewReader(faviconSVGBytes))
 			return
 		}
@@ -270,19 +271,21 @@ func index(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
 	}
 
 	// fmt.Println("powerPct", par.GetFloat64("data", "0", "powerAvg")/powerNominal*100)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=600")
 	err = t.ExecuteWriter(pongo2.Context{
-		"energyYield":    par.GetFloat64("data", "0", "energyYield"),
-		"powerAvg":       par.GetFloat64("data", "0", "powerAvg"),
-		"powerAvgPct":    par.GetFloat64("data", "0", "powerAvg") / powerNominal * 100,
-		"windAvg":        par.GetFloat64("data", "0", "windAvg"),
-		"windAvgArr":     windAvgArr,
-		"windMaxArr":     windMaxArr,
-		"energyYieldArr": energyYieldArr,
-		"dayArr":         dayArr,
-		"availArr":       availArr,
-		"lowWindArr":     lowWindArr,
-		"genSpeed":       mean.GetFloat64("data", "0", "data", "GeneratorSpeedAvg"),
-		"lastUpdate":     time.Now().Add(-time.Second * time.Duration(age)).Format(time.UnixDate),
+		"energyYield":           par.GetFloat64("data", "0", "energyYield"),
+		"powerAvg":              par.GetFloat64("data", "0", "powerAvg"),
+		"powerAvgPct":           par.GetFloat64("data", "0", "powerAvg") / powerNominal * 100,
+		"windAvg":               par.GetFloat64("data", "0", "windAvg"),
+		"windAvgArr":            windAvgArr,
+		"windMaxArr":            windMaxArr,
+		"energyYieldArr":        energyYieldArr,
+		"dayArr":                dayArr,
+		"availArr":              availArr,
+		"lowWindArr":            lowWindArr,
+		"genSpeed":              mean.GetFloat64("data", "0", "data", "GeneratorSpeedAvg"),
+		"lastUpdate":            time.Now().Add(-time.Second * time.Duration(age)).Format(time.UnixDate),
 		"monthlyLabels":         monthlyLabelsArr,
 		"monthlyYield":          monthlyYieldArr,
 		"monthlyIsCurrent":      monthlyIsCurrentArr,
@@ -294,6 +297,7 @@ func index(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
 		"yearlyYoyChange":       yearlyYoyChangeArr,
 		"ytdTotal":              ytdTotal,
 		"ytdYoyChange":          ytdYoyChange,
+		"version":               os.Getenv("FASTLY_SERVICE_VERSION"),
 	}, w)
 	if err != nil {
 		w.WriteHeader(fsthttp.StatusInternalServerError)
@@ -429,7 +433,7 @@ func getYear(ctx context.Context, year int) (string, error) {
 	return string(data), nil
 }
 
-func getMonthlyData(ctx context.Context, year int, month int) (float64, error) {
+func getMonthlyData(ctx context.Context, year, month int) (float64, error) {
 	store, err := kvstore.Open(kvStoreName)
 	if err != nil {
 		return 0, err
@@ -744,7 +748,7 @@ func getYearToDateTotal(ctx context.Context) (float64, error) {
 	return ytdTotal, nil
 }
 
-func getYearToDateTotalForYear(ctx context.Context, year int, upToMonth int) (float64, error) {
+func getYearToDateTotalForYear(ctx context.Context, year, upToMonth int) (float64, error) {
 	var ytdTotal float64
 	for month := 1; month <= upToMonth; month++ {
 		monthlyYield, err := getMonthlyData(ctx, year, month)
@@ -874,6 +878,8 @@ func getLatestMean(ctx context.Context) (string, uint32, error) {
 }
 
 func favicon(_ context.Context, w fsthttp.ResponseWriter, _ *fsthttp.Request) {
+	w.Header().Set("Content-Type", "image/x-icon")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
 	io.Copy(w, bytes.NewReader(faviconBytes))
 }
 
@@ -897,6 +903,7 @@ func exportMonthly(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Req
 	if format == "csv" {
 		w.Header().Set("Content-Type", "text/csv")
 		w.Header().Set("Content-Disposition", "attachment; filename=monthly_production.csv")
+		w.Header().Set("Cache-Control", "public, max-age=600")
 
 		// Write CSV header
 		fmt.Fprintln(w, "Month,Energy (MWh),Capacity Factor (%),YoY Change (%)")
@@ -912,6 +919,7 @@ func exportMonthly(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Req
 	} else {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Content-Disposition", "attachment; filename=monthly_production.json")
+		w.Header().Set("Cache-Control", "public, max-age=600")
 		fmt.Fprint(w, monthlyData)
 	}
 }
@@ -936,6 +944,7 @@ func exportYearly(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Requ
 	if format == "csv" {
 		w.Header().Set("Content-Type", "text/csv")
 		w.Header().Set("Content-Disposition", "attachment; filename=yearly_production.csv")
+		w.Header().Set("Cache-Control", "public, max-age=600")
 
 		// Write CSV header
 		fmt.Fprintln(w, "Year,Energy (GWh),Capacity Factor (%),YoY Change (%)")
@@ -951,6 +960,7 @@ func exportYearly(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Requ
 	} else {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Content-Disposition", "attachment; filename=yearly_production.json")
+		w.Header().Set("Cache-Control", "public, max-age=600")
 		fmt.Fprint(w, yearlyData)
 	}
 }
