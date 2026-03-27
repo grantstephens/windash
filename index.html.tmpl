@@ -15,7 +15,7 @@
         <script src=" https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/js/all.min.js "></script>
         <script defer src="https://analytics.flashflood.xyz/script.js" data-website-id="ead15199-4626-4e4f-a89a-0d7eb42103f8"></script>
     </head>
-    <body class="bg-gray-100">
+    <body class="bg-gray-100" style="min-height: 100vh; display: flex; flex-direction: column">
         <div class="container mx-auto px-4 py-6">
             <!-- Header -->
             <div class="flex justify-between items-center mb-6">
@@ -38,28 +38,33 @@
             </div>
 
             <!-- Current Status Overview -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-                <div class="bg-white rounded-lg shadow p-4">
-                    <div class="flex justify-between">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-lg shadow p-4" style="border-left: 4px solid #3b82f6">
+                    <div class="flex justify-between items-center">
                         <div>
-                            <p class="text-sm text-gray-600">
-                                Current Power Output
+                            <p class="text-sm text-gray-500">
+                                Power Output
                             </p>
                             <h2
-                                class="text-2xl font-bold text-blue-600"
+                                class="text-2xl font-bold text-gray-800"
                                 id="currentPower"
                             >
                                 {{ powerAvg|floatformat:0 }} kW
                             </h2>
                         </div>
-                        <div class="text-blue-500">
-                            <i class="fas fa-bolt text-2xl"></i>
+                        <div style="background-color: #dbeafe; border-radius: 9999px; padding: 0.75rem">
+                            <svg class="w-7 h-7{% if powerAvg > 0 %} animate-spin{% endif %}" style="color: #3b82f6" {% if powerAvg > 0 %}style="animation-duration: {{ powerAvgSpinDuration }}s"{% endif %} viewBox="0 0 100 100" fill="currentColor">
+                                <circle cx="50" cy="50" r="5"/>
+                                <g transform="rotate(0 50 50)"><path d="M47 45 Q44 25, 47 8 Q50 3, 53 8 Q56 25, 53 45Z"/></g>
+                                <g transform="rotate(120 50 50)"><path d="M47 45 Q44 25, 47 8 Q50 3, 53 8 Q56 25, 53 45Z"/></g>
+                                <g transform="rotate(240 50 50)"><path d="M47 45 Q44 25, 47 8 Q50 3, 53 8 Q56 25, 53 45Z"/></g>
+                            </svg>
                         </div>
                     </div>
-                    <div class="mt-2">
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div class="mt-3">
+                        <div class="w-full bg-blue-100 rounded-full h-2">
                             <div
-                                class="bg-blue-600 h-2.5 rounded-full"
+                                class="bg-gradient-to-r from-blue-400 to-blue-600 h-2 rounded-full transition-all"
                                 style="width: {{ powerAvgPct|floatformat:0 }}%"
                             ></div>
                         </div>
@@ -69,87 +74,61 @@
                     </div>
                 </div>
 
-                <div class="bg-white rounded-lg shadow p-4">
-                    <div class="flex justify-between">
+                <div class="bg-white rounded-lg shadow p-4" style="border-left: 4px solid #10b981">
+                    <div class="flex justify-between items-center">
                         <div>
-                            <p class="text-sm text-gray-600">Wind Speed</p>
+                            <p class="text-sm text-gray-500">Wind Speed</p>
                             <h2
-                                class="text-2xl font-bold text-emerald-600"
+                                class="text-2xl font-bold text-gray-800"
                                 id="windSpeed"
                             >
                                 {{ windAvg|floatformat:2 }} m/s
                             </h2>
                         </div>
-                        <div class="text-emerald-500">
-                            <i class="fas fa-wind text-2xl"></i>
+                        <div style="background-color: #d1fae5; border-radius: 9999px; padding: 0.75rem">
+                            <i class="fas fa-wind text-2xl" style="color: #10b981"></i>
                         </div>
                     </div>
-                    <!-- <p class="text-xs text-gray-500 mt-4">
-                        Optimal range: 12-25 m/s
-                    </p> -->
                 </div>
 
-                <div class="bg-white rounded-lg shadow p-4">
-                    <div class="flex justify-between">
+                <div class="bg-white rounded-lg shadow p-4" style="border-left: 4px solid #f59e0b">
+                    <div class="flex justify-between items-center">
                         <div>
-                            <p class="text-sm text-gray-600">Rotor Speed</p>
+                            <p class="text-sm text-gray-500">Energy Today</p>
                             <h2
-                                class="text-2xl font-bold text-purple-600"
-                                id="rotorSpeed"
-                            >
-                                {{ genSpeed|floatformat:2 }} RPM
-                            </h2>
-                        </div>
-                        <div class="text-purple-500">
-                            <i class="fas fa-sync-alt text-2xl"></i>
-                        </div>
-                    </div>
-                    <!-- <p class="text-xs text-gray-500 mt-4">
-                        Normal operational range
-                    </p> -->
-                </div>
-
-                <div class="bg-white rounded-lg shadow p-4">
-                    <div class="flex justify-between">
-                        <div>
-                            <p class="text-sm text-gray-600">Energy Today</p>
-                            <h2
-                                class="text-2xl font-bold text-amber-600"
+                                class="text-2xl font-bold text-gray-800"
                                 id="energyToday"
                             >
                                 {{ energyYield|floatformat:0 }} kWh
                             </h2>
                         </div>
-                        <div class="text-amber-500">
-                            <i class="fas fa-calendar-day text-2xl"></i>
+                        <div style="background-color: #fef3c7; border-radius: 9999px; padding: 0.75rem">
+                            <i class="fas fa-sun text-2xl" style="color: #f59e0b"></i>
                         </div>
                     </div>
-                    <!-- <p class="text-xs text-gray-500 mt-4">
-                        Daily target: 50 MWh
-                    </p> -->
                 </div>
 
-                <div class="bg-white rounded-lg shadow p-4">
-                    <div class="flex justify-between">
+                <div class="bg-white rounded-lg shadow p-4" style="border-left: 4px solid #6366f1">
+                    <div class="flex justify-between items-center">
                         <div>
-                            <p class="text-sm text-gray-600">Year to Date (2026)</p>
+                            <p class="text-sm text-gray-500">Year to Date (2026)</p>
                             <h2
-                                class="text-2xl font-bold text-indigo-600"
+                                class="text-2xl font-bold text-gray-800"
                                 id="ytdTotal"
                             >
                                 {{ ytdTotal|floatformat:1 }} MWh
                             </h2>
                         </div>
-                        <div class="text-indigo-500">
-                            <i class="fas fa-chart-line text-2xl"></i>
+                        <div style="background-color: #e0e7ff; border-radius: 9999px; padding: 0.75rem">
+                            <i class="fas fa-chart-line text-2xl" style="color: #6366f1"></i>
                         </div>
                     </div>
                     {% if ytdYoyChange != 0 %}
                     <p class="text-xs text-gray-500 mt-2">
                         {% if ytdYoyChange > 0 %}
-                        <span class="text-green-600">↑ +{{ ytdYoyChange|floatformat:1 }}%</span> vs YTD 2025
+                        <span class="text-green-600 font-semibold">↑ +{{ ytdYoyChange|floatformat:1 }}%</span> vs YTD 2025
                         {% else %}
-                        <span class="text-red-600">↓ {{ ytdYoyChange|floatformat:1 }}%</span> vs YTD 2025
+                        <span class="text-red-600 font-semibold">↓ {{ ytdYoyChange|floatformat:1 }}%</span> vs YTD 2025
                         {% endif %}
                     </p>
                     {% endif %}
@@ -541,10 +520,10 @@
                 </div>
             </div> -->
 
-            <!-- Footer -->
-            <div class="mt-6 text-center text-sm text-gray-500">
-                <p>Built by <a href="https://grant.stephens.co.za" class="underline hover:text-gray-700">Grant Stephens</a> with ❤️ and powered by <a href="https://www.fastly.com" class="underline hover:text-gray-700">Fastly</a> · <a href="https://github.com/grantstephens/windash" class="underline hover:text-gray-700">Source</a> · v{{ version }}</p>
-            </div>
+        </div>
+        <!-- Footer -->
+        <div class="mt-auto py-4 text-center text-sm text-gray-500">
+            <p>Built by <a href="https://grant.stephens.co.za" class="underline hover:text-gray-700">Grant Stephens</a> with 💚 and powered by <a href="https://www.fastly.com" class="underline hover:text-gray-700">Fastly</a> · <a href="https://github.com/grantstephens/windash" class="underline hover:text-gray-700">Source</a> · v{{ version }}</p>
         </div>
 
         <!-- Flowbite -->

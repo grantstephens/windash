@@ -152,7 +152,7 @@ func index(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
 		fmt.Println(err)
 		return
 	}
-	mean, err := fastjson.Parse(latestMean)
+	_, err = fastjson.Parse(latestMean)
 	if err != nil {
 		w.WriteHeader(fsthttp.StatusInternalServerError)
 		fmt.Println(err)
@@ -271,12 +271,20 @@ func index(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
 	}
 
 	// fmt.Println("powerPct", par.GetFloat64("data", "0", "powerAvg")/powerNominal*100)
+	// Spin duration: 10s at 0% power, 0.5s at 100% power (linear interpolation)
+	powerPct := par.GetFloat64("data", "0", "powerAvg") / powerNominal * 100
+	spinDuration := 10.0 - (powerPct/100.0)*9.5
+	if spinDuration < 0.5 {
+		spinDuration = 0.5
+	}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age=600")
 	err = t.ExecuteWriter(pongo2.Context{
 		"energyYield":           par.GetFloat64("data", "0", "energyYield"),
 		"powerAvg":              par.GetFloat64("data", "0", "powerAvg"),
-		"powerAvgPct":           par.GetFloat64("data", "0", "powerAvg") / powerNominal * 100,
+		"powerAvgPct":           powerPct,
+		"powerAvgSpinDuration":  spinDuration,
 		"windAvg":               par.GetFloat64("data", "0", "windAvg"),
 		"windAvgArr":            windAvgArr,
 		"windMaxArr":            windMaxArr,
@@ -284,7 +292,6 @@ func index(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
 		"dayArr":                dayArr,
 		"availArr":              availArr,
 		"lowWindArr":            lowWindArr,
-		"genSpeed":              mean.GetFloat64("data", "0", "data", "GeneratorSpeedAvg"),
 		"lastUpdate":            time.Now().Add(-time.Second * time.Duration(age)).Format(time.UnixDate),
 		"monthlyLabels":         monthlyLabelsArr,
 		"monthlyYield":          monthlyYieldArr,
