@@ -448,12 +448,16 @@ func getMonthlyData(ctx context.Context, year, month int) (float64, error) {
 
 	now := time.Now()
 	currentYear, currentMonth, _ := now.Date()
-	isCurrentMonth := (year == currentYear && time.Month(month) == currentMonth)
+
+	// Only cache/serve from cache for completed past months (not current or future)
+	monthStart := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+	currentMonthStart := time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, time.UTC)
+	isCompletedPastMonth := monthStart.Before(currentMonthStart)
 
 	keyStr := fmt.Sprintf("monthly-%04d%02d", year, month)
 
-	// Check cache if not current month
-	if !isCurrentMonth {
+	// Check cache only for completed past months
+	if isCompletedPastMonth {
 		if entry, err := store.Lookup(keyStr); err == nil {
 			var p fastjson.Parser
 			v, err := p.Parse(entry.String())
@@ -514,8 +518,8 @@ func getMonthlyData(ctx context.Context, year, month int) (float64, error) {
 	// Convert from kWh to MWh
 	totalEnergyYieldMWh := totalEnergyYield / 1000.0
 
-	// Store in KV if not current month and we have valid data
-	if !isCurrentMonth && totalEnergyYieldMWh > 0 {
+	// Store in KV if completed past month and we have valid data
+	if isCompletedPastMonth && totalEnergyYieldMWh > 0 {
 		storedData := fmt.Sprintf(`{"data":[{"month":"%04d%02d","energyYield":%f}]}`, year, month, totalEnergyYieldMWh)
 		store.Insert(keyStr, bytes.NewReader([]byte(storedData)))
 	}
