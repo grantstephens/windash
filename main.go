@@ -293,6 +293,7 @@ func index(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
 		"availArr":              availArr,
 		"lowWindArr":            lowWindArr,
 		"lastUpdate":            time.Now().Add(-time.Second * time.Duration(age)).Format(time.UnixDate),
+		"lastUpdateAge":         int(age),
 		"monthlyLabels":         monthlyLabelsArr,
 		"monthlyYield":          monthlyYieldArr,
 		"monthlyIsCurrent":      monthlyIsCurrentArr,
@@ -805,9 +806,9 @@ func history(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) 
 	// io.Copy(w, data.String())
 }
 
-func getLatestPerf(ctx context.Context) (string, int, error) {
+func getLatestPerf(ctx context.Context) (string, uint32, error) {
 	var p string
-	var a int
+	var a uint32
 	baseURL := fmt.Sprintf("https://%s/api/v1.0/Customer/Performance", backendURL)
 
 	req, err := fsthttp.NewRequest("GET", baseURL, nil)
@@ -825,17 +826,8 @@ func getLatestPerf(ctx context.Context) (string, int, error) {
 	if resp.StatusCode > 299 {
 		return p, a, errors.New(fsthttp.StatusText(resp.StatusCode))
 	}
-	// a, cached := resp.Age()
-	// fmt.Println(a, cached)
-	// h, cached := resp.TTL()
-	// fmt.Println(h, cached)
-	fmt.Println("Age", resp.Header.Get("Age"))
-	if hAge := resp.Header.Get("Age"); hAge != "" {
-		a, err = strconv.Atoi(resp.Header.Get("Age"))
-		if err != nil {
-			return p, a, err
-		}
-	}
+	a, _ = resp.Age()
+	fmt.Println("Age", a)
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return p, a, err
