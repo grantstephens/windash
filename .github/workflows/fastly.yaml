@@ -13,7 +13,7 @@ jobs:
       uses: actions/setup-go@v6
       with:
           go-version-file: "go.mod"
-    - uses: acifani/setup-tinygo@v2
+    - uses: acifani/setup-tinygo@v3
       with:
         tinygo-version: '0.40.1'
 
