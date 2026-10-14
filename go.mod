@@ -2,7 +2,7 @@ module windash
 
 go 1.25
 
-require github.com/fastly/compute-sdk-go v1.10.0
+require github.com/fastly/compute-sdk-go v1.11.0
 
 require github.com/valyala/fastjson v1.6.10
 
